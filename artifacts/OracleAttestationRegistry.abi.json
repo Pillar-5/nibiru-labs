@@ -1,0 +1,367 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "DuplicateContent",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "EmptyPair",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "pairId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "pair",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "oracleRateFixed8",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "referenceFixed8",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "int64",
+        "name": "deviationBps",
+        "type": "int64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "status",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "oracleUpdateBlock",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "collectedAtUnix",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "oracleBlock",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "contentHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "AttestationRecorded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "pairId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getAttestation",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "pair",
+            "type": "string"
+          },
+          {
+            "internalType": "uint64",
+            "name": "oracleRateFixed8",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "referenceFixed8",
+            "type": "uint64"
+          },
+          {
+            "internalType": "int64",
+            "name": "deviationBps",
+            "type": "int64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint64",
+            "name": "oracleUpdateBlock",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "collectedAtUnix",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "oracleBlock",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "contentHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct OracleAttestationRegistry.Attestation",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isKnownContentHash",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "pair",
+        "type": "string"
+      }
+    ],
+    "name": "lookup",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "found",
+        "type": "bool"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "pair",
+            "type": "string"
+          },
+          {
+            "internalType": "uint64",
+            "name": "oracleRateFixed8",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "referenceFixed8",
+            "type": "uint64"
+          },
+          {
+            "internalType": "int64",
+            "name": "deviationBps",
+            "type": "int64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint64",
+            "name": "oracleUpdateBlock",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "collectedAtUnix",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "oracleBlock",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "contentHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct OracleAttestationRegistry.Attestation",
+        "name": "attestation",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "pairId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "pair",
+        "type": "string"
+      },
+      {
+        "internalType": "uint64",
+        "name": "oracleRateFixed8",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint64",
+        "name": "referenceFixed8",
+        "type": "uint64"
+      },
+      {
+        "internalType": "int64",
+        "name": "deviationBps",
+        "type": "int64"
+      },
+      {
+        "internalType": "uint8",
+        "name": "status",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint64",
+        "name": "oracleUpdateBlock",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint32",
+        "name": "collectedAtUnix",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "oracleBlock",
+        "type": "uint32"
+      }
+    ],
+    "name": "record",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "reportCount",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
