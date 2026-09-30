@@ -57,7 +57,11 @@ contract OracleAttestationRegistry {
     error NotOwner();
     error ZeroAddress();
     error EmptyPair();
+    error PairIdMismatch(bytes32 supplied, bytes32 expected);
+    error ZeroOracleRate();
+    error InvalidStatus(uint8 status);
     error DuplicateContent();
+    error NoAttestation(bytes32 pairId);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -81,7 +85,9 @@ contract OracleAttestationRegistry {
     ///        validated against the pair to prevent mis-keyed entries.
     /// @dev Status codes: 0 ok, 1 warning, 2 critical, 3 stale, 4 unavailable.
     ///      Prices are fixed-point 1e8. Rates must be non-zero for a meaningful
-    ///      report; a zero oracle rate is a failed read and is rejected.
+    ///      report; a zero oracle rate is a failed read and is rejected. Each
+    ///      rejected condition has its own error so a failing writer can tell
+    ///      what was wrong from the revert data alone.
     function record(
         bytes32 pairId,
         string calldata pair,
@@ -94,9 +100,10 @@ contract OracleAttestationRegistry {
         uint32 oracleBlock
     ) external onlyOwner {
         if (bytes(pair).length == 0) revert EmptyPair();
-        if (pairId != keccak256(bytes(pair))) revert NotOwner();
-        if (oracleRateFixed8 == 0) revert EmptyPair();
-        if (status > 4) revert EmptyPair();
+        bytes32 expected = keccak256(bytes(pair));
+        if (pairId != expected) revert PairIdMismatch(pairId, expected);
+        if (oracleRateFixed8 == 0) revert ZeroOracleRate();
+        if (status > 4) revert InvalidStatus(status);
 
         bytes32 contentHash = keccak256(
             abi.encode(
@@ -143,7 +150,7 @@ contract OracleAttestationRegistry {
     /// @notice Latest attestation for a pair. Reverts if none exists.
     function getAttestation(bytes32 pairId) external view returns (Attestation memory) {
         Attestation storage a = _latest[pairId];
-        require(a.oracleRateFixed8 != 0, "no attestation");
+        if (a.oracleRateFixed8 == 0) revert NoAttestation(pairId);
         return a;
     }
 

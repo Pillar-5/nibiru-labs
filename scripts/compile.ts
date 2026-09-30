@@ -3,7 +3,7 @@
  * artifacts/. Avoids a Hardhat/Foundry dependency for a single-contract
  * project while still producing standard {abi, bytecode} artifacts.
  */
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import solcModule from "solc";
@@ -55,7 +55,6 @@ function compile(): void {
   }
 
   const artifactDir = join(root, "artifacts");
-  rmSync(artifactDir, { recursive: true, force: true });
   mkdirSync(artifactDir, { recursive: true });
 
   const artifact = {
@@ -66,7 +65,13 @@ function compile(): void {
   };
   const out = join(artifactDir, "OracleAttestationRegistry.json");
   writeFileSync(out, JSON.stringify(artifact, null, 2), "utf8");
+  // Consumers (and this repository's committed artifacts/) use the bare ABI
+  // file, so it is regenerated alongside the full artifact instead of being
+  // left stale by the compile step.
+  const abiOut = join(artifactDir, "OracleAttestationRegistry.abi.json");
+  writeFileSync(abiOut, JSON.stringify(contract.abi, null, 2) + "\n", "utf8");
   console.log(`compiled OracleAttestationRegistry -> ${out}`);
+  console.log(`wrote ABI -> ${abiOut}`);
 }
 
 compile();

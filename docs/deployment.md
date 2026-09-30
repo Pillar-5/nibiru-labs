@@ -27,7 +27,7 @@ npm run contract:compile
 
 `scripts/compile.ts` uses the `solc` npm package (no Hardhat/Foundry needed for
 a single contract) and writes `artifacts/OracleAttestationRegistry.json` with
-`{ abi, bytecode }`.
+`{ abi, bytecode }` plus the bare `artifacts/OracleAttestationRegistry.abi.json`.
 
 Two build choices are load-bearing and were verified against the live node:
 
@@ -63,12 +63,12 @@ Example Testnet-2 deployment:
 | Item | Value |
 | --- | --- |
 | Network | Nibiru Testnet-2 (chainId 6911) |
-| Registry | `0x1E35A33E51885b9b87a9a25CaB6F28797701669F` |
-| Deployment tx | `0xd6e1e9c914b70ea94f0584b915afba4f8e47522497747cffabfdc06721547961` |
+| Registry | `0xCc4401b095A0863B447D6343fA1b305417A4230d` |
+| Deployment tx | `0x0df83ca4090f544210b299b946d92e2c78e772e3b3ff3e42df38b5c50d89d14c` |
 
 Explorer: append either path to `https://testnet.nibiscan.io/`:
-`address/0x1E35A33E51885b9b87a9a25CaB6F28797701669F` or
-`tx/0xd6e1e9c914b70ea94f0584b915afba4f8e47522497747cffabfdc06721547961`.
+`address/0xCc4401b095A0863B447D6343fA1b305417A4230d` or
+`tx/0x0df83ca4090f544210b299b946d92e2c78e772e3b3ff3e42df38b5c50d89d14c`.
 
 ## Submit attestations
 

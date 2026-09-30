@@ -103,9 +103,9 @@ Reference handling details that affect interpretation:
 
 - **Binance quotes are USDT-quoted**, not USD; the quote stablecoin is itself
   oracle-priced, so Binance is ordered last and flagged in quote metadata.
-- **`unibi:uusd` has no keyless public reference** in the default set (no free
-  exchange endpoint quotes NIBI), so NIBI is reported on **freshness only**
-  unless you add a NIBI-capable reference. This is surfaced in the UI and in
+- **`unibi:uusd` has only sparse keyless coverage** in the default provider
+  set (most free exchange endpoints do not list NIBI), so NIBI is reported on
+  **freshness only** unless a quote answers. This is surfaced in the UI and in
   the run notes rather than hidden.
 - Reference prices and the oracle use independent clocks; the deviation metric
   compares the oracle's last value against a spot quote fetched at read time,
@@ -138,9 +138,10 @@ threshold:
 | `uusdc:uusd` | 204 | +3.74 bps | 4.6 bps | ok |
 | `unibi:uusd` | 3 | +12.11 bps | 20.1 bps | ok |
 
-`unibi:uusd` shows 3 rather than 204 because no free reference endpoint
-listings for NIBI answered during this window; the monitor recorded the
-pair's freshness and said so explicitly instead of inventing a comparison.
+`unibi:uusd` shows 3 rather than 204 because most keyless reference endpoints
+do not list NIBI; only 3 quotes answered during this window. The monitor
+recorded the pair's freshness and said so explicitly instead of inventing a
+comparison.
 Zero threshold breaches and zero stale samples across the whole window. The
 complete dataset is committed at `data/samples/example-snapshots.jsonl`;
 `node scripts/stats.cjs` recomputes every number in this table from it.
@@ -154,22 +155,23 @@ plain `eth_call` (see `scripts/verify.ts`).
 
 | item | value |
 |------|-------|
-| Registry address | `0x1E35A33E51885b9b87a9a25CaB6F28797701669F` |
-| Deployment tx | `0xd6e1e9c914b70ea94f0584b915afba4f8e47522497747cffabfdc06721547961` |
+| Registry address | `0xCc4401b095A0863B447D6343fA1b305417A4230d` |
+| Deployment tx | `0x0df83ca4090f544210b299b946d92e2c78e772e3b3ff3e42df38b5c50d89d14c` |
 
-Anchored integrity reports (one confirmed transaction per pair):
+Anchored integrity reports (one confirmed transaction per pair, snapshot
+2026-09-30T06:31:19Z at block 9713634):
 
 | pair | transaction |
 |------|-------------|
-| `unibi:uusd` | `0x266ad485303983aef8b8be6770666c312ada9fcb131fab394a66cafa0fc15749` |
-| `ueth:uusd` | `0xf5408f621a5340797fa354ec0d8bfcd2b86a717f2bdd2ed5ed1c7c825e1e8563` |
-| `ubtc:uusd` | `0xd4d353f969d73e9e069379833a1333e70ff5745d83ccfed6382d14e303e5a54c` |
-| `uusdc:uusd` | `0xfe502ba10c638791bd727fdbe33f870e2fb64c67063dbce4c8e3dade44e04b81` |
+| `unibi:uusd` | `0xc17b6ce5441bf5b95bf117d16a9413a90b2ef4489b03c6eb2c4c3e21630aa212` |
+| `ueth:uusd` | `0x984ac1fe1ac5c1f956ef3462ebf07dd69c1d3c79442ee038a1cb75939d21e905` |
+| `ubtc:uusd` | `0x5d1489e626b3c5b0a8246fd6b121e38ac9c32753aba457e4263711c858960ea8` |
+| `uusdc:uusd` | `0x9732a92854e9b9f596a335247a70d2b340a8805d8745f474f6021f6bb79a1be3` |
 
 Explorer links (append to `https://testnet.nibiscan.io/`):
 
-- address: `address/0x1E35A33E51885b9b87a9a25CaB6F28797701669F`
-- deployment: `tx/0xd6e1e9c914b70ea94f0584b915afba4f8e47522497747cffabfdc06721547961`
+- address: `address/0xCc4401b095A0863B447D6343fA1b305417A4230d`
+- deployment: `tx/0x0df83ca4090f544210b299b946d92e2c78e772e3b3ff3e42df38b5c50d89d14c`
 
 The demonstration uses a dedicated low-value testnet account. You do not need
 it: configure your own wallet and network and reproduce the same workflow
@@ -204,20 +206,24 @@ Copy it to `.env`; `.env` is git-ignored and must never be committed.
 
 | variable | default | meaning |
 |----------|---------|---------|
-| `NETWORK` | `testnet-2` | selects the built-in preset (`testnet-2` or `mainnet`) |
+| `NIBIRU_NETWORK` | `testnet-2` | selects the built-in preset (`testnet-2` or `mainnet`) |
 | `NIBIRU_RPC_URL` | preset | EVM RPC endpoint override |
 | `NIBIRU_CHAIN_ID` | preset | chain id override (6911 testnet, 6900 mainnet) |
-| `EXPLORER_BASE_URL` | preset | explorer base used in printed links |
-| `ORACLE_PRECOMPILE` | `0x…0801` | oracle precompile address |
-| `ORACLE_PAIRS` | `unibi:uusd,ueth:uusd,ubtc:uusd,uusdc:uusd` | comma-separated pairs to monitor |
-| `SYMBOL_MAP` | `unibi=NIBI,ueth=ETH,ubtc=BTC,uusdc=USDC` | base denom -> reference symbol |
+| `NIBIRU_EXPLORER_URL` | preset | explorer base used in printed links |
+| `NIBIRU_ORACLE_PRECOMPILE` | `0x…0801` | oracle precompile address |
+| `NIBIRU_ORACLE_PAIRS` | `unibi:uusd,ueth:uusd,ubtc:uusd,uusdc:uusd` | comma-separated pairs to monitor |
+| `REFERENCE_SYMBOLS` | `unibi=NIBI,ueth=ETH,ubtc=BTC,uusdc=USDC` | base denom -> reference symbol |
 | `REFERENCE_PROVIDERS` | `coinbase,kraken,binance,coingecko` | provider order, first answer wins |
 | `COINGECKO_API_KEY` | (empty) | optional demo key to raise CoinGecko limits |
 | `DEVIATION_WARN_BPS` | `50` | absolute deviation that raises `warning` |
 | `DEVIATION_CRITICAL_BPS` | `200` | absolute deviation that raises `critical` |
 | `MAX_ORACLE_AGE_SECONDS` | `60` | oracle value age beyond which status is `stale` |
 | `MONITOR_INTERVAL_MS` | `300000` | cadence for `monitor:loop` |
+| `STATE_FILE` | `data/state.jsonl` | append-only snapshot store |
+| `API_HOST` / `API_PORT` | `127.0.0.1` / `8787` | read-only API bind address |
 | `ATTESTATION_REGISTRY` | (from `data/deployment.json`) | registry address to write/read |
+| `MAX_GAS_SPEND_NIBI` | `0.05` | per-run spending guard for deploy/attest |
+| `MAX_ATTESTATIONS_PER_RUN` | `4` | max pair reports per `attest:submit` run |
 | `NIBIRU_PRIVATE_KEY` | (unset) | local signing key for deploy/attest only; **never** committed |
 
 Network endpoints are presets, not hardcoded constants: set `NIBIRU_RPC_URL`,
@@ -311,10 +317,10 @@ npm run typecheck      # tsc --noEmit
 npm run web:build      # production build of the dashboard
 ```
 
-34 tests across 4 files. The default suite runs offline and covers the
-analysis (deviation, staleness, status precedence), reference provider
-fallback, store round-trips, and attestation content hashing. With
-`LIVE_TESTS=1`, four additional tests read the oracle precompile on both
+46 tests across 5 files. The default suite runs offline and covers the
+contract encoding parity, analysis (deviation, staleness, status precedence),
+reference provider fallback, store round-trips, and attestation content
+hashing. With `LIVE_TESTS=1`, four additional tests read the oracle precompile on both
 Testnet-2 and mainnet and assert the decoded tuple layout. All tests pass.
 Contract-level behavior is covered by the live attestation/verify path
 against Testnet-2 and by the on-chain duplicate-rejection check.
@@ -354,7 +360,7 @@ to make the project look like on-chain infrastructure.
 - Stack: TypeScript, Node >= 20, ethers v6, Vite + React, an Express API, and
   `solc` 0.8.26 pinned through `scripts/compile.ts`. No Hardhat/Foundry
   dependency; the public RPC is sufficient for the first phase.
-- Add a pair: extend `ORACLE_PAIRS` and `SYMBOL_MAP` in `.env`; no code change.
+- Add a pair: extend `NIBIRU_ORACLE_PAIRS` and `REFERENCE_SYMBOLS` in `.env`; no code change.
 - Add a reference source: implement the `ReferenceProvider` interface in
   `src/oracle/reference.ts` and list it in `REFERENCE_PROVIDERS`.
 - Extend the dashboard against the read-only API contract; it is the same

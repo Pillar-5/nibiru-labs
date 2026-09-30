@@ -5,8 +5,8 @@
  * key is never printed. A per-run gas-spending guard aborts the broadcast when
  * the projected native-coin cost exceeds MAX_GAS_SPEND_NIBI.
  *
- * The deployed address is printed and appended to deployment.json (gitignored
- * per-network file; see docs/deployment.md).
+ * The deployed address is printed and appended to data/deployment.json
+ * (committed per-network file; see docs/deployment.md).
  */
 import "dotenv/config";
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";

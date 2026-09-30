@@ -10,7 +10,7 @@ import { appendSnapshot } from "../store.ts";
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const intervalMs = Number.parseInt(process.env.MONITOR_INTERVAL_MS ?? "60000", 10);
+  const intervalMs = config.monitorIntervalMs;
   if (!Number.isFinite(intervalMs) || intervalMs < 1000) {
     console.error("MONITOR_INTERVAL_MS must be an integer >= 1000");
     process.exit(1);

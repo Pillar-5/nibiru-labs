@@ -138,10 +138,10 @@ Reproduce with `node scripts/stats.cjs` (it reads the committed file and
 prints everything below). Over the committed window:
 
 - 204 snapshots, 816 pair-samples (204 each for `unibi/ueth/ubtc/uusdc`).
-- 614 of 816 samples had an independent reference. NIBI is mapped to a
-  reference symbol, but free endpoints list it only sporadically: Coinbase
-  answered 3 times in this window, so the other `unibi:uusd` samples are
-  freshness-only and say so in their status reason.
+- 614 of 816 samples had an independent reference. `unibi` maps to `NIBI` in
+  `REFERENCE_SYMBOLS`, but most keyless exchange endpoints list NIBI only
+  sporadically (3 quotes answered in this window), so the other `unibi:uusd`
+  samples are freshness-only and say so in their status reason.
 - Absolute deviation vs reference: **mean 4.00 bps, median 3.90 bps, population
   stdev 1.49 bps, max 20.13 bps** — well inside the 50 bps warning threshold. No
   critical or stale samples occurred during the window.
@@ -155,7 +155,8 @@ the dashboard and attestation flow, not a general claim about oracle behavior.
   rate-limit behavior; an outage reduces coverage but never fabricates a value.
 - Binance references are USDT-denominated and therefore not independent of the
   USD layer at the margin.
-- NIBI has no keyless reference mapping in the default config, so its samples
-  report freshness only unless a `REFERENCE_SYMBOLS` mapping is added.
+- NIBI has only sparse keyless coverage in the default provider set, so most
+  of its samples report freshness only unless a NIBI-capable reference mapping
+  is added.
 - Testnet oracle values are mirrored by the chain and can lag; the monitor
   reports what the chain actually serves rather than what it "should" serve.

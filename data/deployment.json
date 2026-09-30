@@ -2,8 +2,8 @@
   "6911": {
     "network": "Nibiru Testnet-2",
     "chainId": 6911,
-    "address": "0x1E35A33E51885b9b87a9a25CaB6F28797701669F",
-    "txHash": "0xd6e1e9c914b70ea94f0584b915afba4f8e47522497747cffabfdc06721547961",
-    "deployedAt": "2026-09-29T18:00:37.944Z"
+    "address": "0xCc4401b095A0863B447D6343fA1b305417A4230d",
+    "txHash": "0x0df83ca4090f544210b299b946d92e2c78e772e3b3ff3e42df38b5c50d89d14c",
+    "deployedAt": "2026-09-30T06:31:42.056Z"
   }
 }

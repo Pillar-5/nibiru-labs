@@ -17,6 +17,11 @@
  *
  * Binance quotes are USDT-quoted; the quote stablecoin is itself oracle-priced,
  * so Binance is ordered last and flagged in quote metadata.
+ *
+ * Only CoinGecko reports a true upstream trade time. Coinbase's spot endpoint
+ * carries no timestamp and Kraken's public ticker has none either, so for those
+ * providers `upstreamLastUpdate` mirrors the retrieval time and the quote says
+ * so in its note instead of implying a trade time that was never reported.
  */
 
 export interface ReferenceQuote {
@@ -80,10 +85,11 @@ export const coinbaseProvider: ReferenceProvider = {
         const j = await getJson(url);
         const usd = Number.parseFloat(j?.data?.amount);
         if (Number.isFinite(usd) && usd > 0) {
-          out[symbol] = {
-            usd,
-            lastTradeIso: typeof j?.data?.time === "string" ? j.data.time : nowIso(),
-          };
+          // The /spot payload is {amount, base, currency} only: it carries no
+          // timestamp, so no upstream trade time is reported for Coinbase
+          // quotes (fetchReferences then mirrors the retrieval time and says
+          // so in the quote note).
+          out[symbol] = { usd };
         }
       } catch {
         /* symbol not listed; leave unresolved for the next provider */
@@ -94,45 +100,54 @@ export const coinbaseProvider: ReferenceProvider = {
   },
 };
 
-const KRAKEN_PAIR: Record<string, string> = {
-  BTC: "XBTUSD",
-  ETH: "ETHUSD",
-  USDC: "USDCUSD",
-  // NIBI: not listed on Kraken; falls through to CoinGecko`n
+/**
+ * Kraken's Ticker result keys use legacy aliases ("XETHZUSD" for ETHUSD,
+ * "XXBTZUSD" for XBTUSD), so both the request and the response need mapping.
+ */
+const KRAKEN_PAIRS: Record<string, string[]> = {
+  BTC: ["XBTUSD", "XXBTZUSD"],
+  ETH: ["ETHUSD", "XETHZUSD"],
+  USDC: ["USDCUSD"],
+  // NIBI is not listed on Kraken; it falls through to later providers.
 };
 
-/** Result keys come back as "XETHZUSD"/"ETHUSD" etc.; match them back to symbols. */
-function krakenMatchKey(symbol: string): string {
-  const pair = KRAKEN_PAIR[symbol] ?? `${symbol}USD`;
-  // Kraken returns the queried pair name, or an XXBTZUSD-style alias.
-  return pair.replace("XBT", "XXBT").replace("USD", "ZUSD");
+/** "XETHZUSD" -> "ETHUSD", "XXBTZUSD" -> "XBTUSD", "USDCUSD" -> "USDCUSD". */
+export function normalizeKrakenKey(key: string): string {
+  let k = key.toUpperCase();
+  if (k.endsWith("ZUSD")) k = k.slice(0, -4) + "USD";
+  if (k.startsWith("XX")) return "X" + k.slice(2);
+  if (k.startsWith("X")) return k.slice(1);
+  return k;
 }
 
 export const krakenProvider: ReferenceProvider = {
   name: "kraken",
   async fetch(symbols) {
-    const known = symbols.filter((s) => KRAKEN_PAIR[s]); if (known.length === 0) throw new ReferenceUnavailableError("no kraken-listed symbols requested"); const pairs = known.map((s) => KRAKEN_PAIR[s]);
-    const url = `https://api.kraken.com/0/public/Ticker?pair=${pairs.join(",")}`;
-    const j = await getJson(url);
-    if (!j?.result) {
-      throw new ReferenceUnavailableError(`kraken error: ${JSON.stringify(j?.error ?? "no result")}`);
-    }
+    const known = symbols.filter((s) => KRAKEN_PAIRS[s]);
+    if (known.length === 0) throw new ReferenceUnavailableError("no kraken-listed symbols requested");
     const out: Record<string, ReferenceHit> = {};
-    const resultKeys = Object.keys(j.result);
-    for (const symbol of symbols) {
-      const wanted = KRAKEN_PAIR[symbol] ?? `${symbol}USD`;
-      const key =
-        resultKeys.find((k) => k === wanted || k === krakenMatchKey(symbol)) ??
-        resultKeys.find((k) => k.endsWith(wanted));
-      const entry = key ? j.result[key] : undefined;
-      const last = Number.parseFloat(entry?.c?.[0]);
-      const timeSec = Number(entry?.t?.[0]);
-      if (Number.isFinite(last) && last > 0) {
-        out[symbol] = {
-          usd: last,
-          lastTradeIso:
-            Number.isFinite(timeSec) && timeSec > 0 ? new Date(timeSec * 1000).toISOString() : nowIso(),
-        };
+    for (const symbol of known) {
+      // One request per pair, per alias. A single unsupported pair makes the
+      // batched Ticker endpoint fail the whole call ("EQuery:Unknown asset
+      // pair" was observed against a multi-pair request), so pairs are queried
+      // individually and failures are left for the next provider.
+      for (const pair of KRAKEN_PAIRS[symbol]) {
+        try {
+          const j = await getJson(`https://api.kraken.com/0/public/Ticker?pair=${pair}`);
+          const resultKeys = Object.keys(j?.result ?? {});
+          const key = resultKeys.find((k) => normalizeKrakenKey(k) === pair);
+          const entry = key ? j.result[key] : undefined;
+          const last = Number.parseFloat(entry?.c?.[0]);
+          if (Number.isFinite(last) && last > 0) {
+            // No trade timestamp: the Ticker `t` field is a trade count, not a
+            // time (parsing it as one produced 1970 timestamps), so no
+            // upstreamLastUpdate is reported for Kraken quotes.
+            out[symbol] = { usd: last };
+            break;
+          }
+        } catch {
+          /* try the next alias for this symbol */
+        }
       }
     }
     if (Object.keys(out).length === 0) throw new ReferenceUnavailableError("kraken returned no quotes");
@@ -143,19 +158,23 @@ export const krakenProvider: ReferenceProvider = {
 export const binanceProvider: ReferenceProvider = {
   name: "binance",
   async fetch(symbols) {
-    const list = symbols.map((s) => `${s}USDT`);
-    const url = `https://data-api.binance.vision/api/v3/ticker/price?symbols=${encodeURIComponent(
-      JSON.stringify(list),
-    )}`;
-    const j = await getJson(url);
-    if (!Array.isArray(j)) throw new ReferenceUnavailableError("unexpected binance response shape");
     const out: Record<string, ReferenceHit> = {};
-    for (const entry of j) {
-      const pairSymbol = String(entry?.symbol ?? "");
-      const canonical = symbols.find((s) => pairSymbol === `${s}USDT`);
-      const usd = Number.parseFloat(entry?.price);
-      if (canonical && Number.isFinite(usd) && usd > 0) {
-        out[canonical] = { usd, note: "USDT-quoted (not USD)" };
+    for (const symbol of symbols) {
+      // Binance USDT pairs are requested one at a time: the batched `symbols`
+      // form of this endpoint answers HTTP 400 for the whole request when any
+      // one symbol is unlisted (observed with NIBI), which would otherwise
+      // disable this provider entirely.
+      const url = `https://data-api.binance.vision/api/v3/ticker/price?symbol=${encodeURIComponent(
+        `${symbol}USDT`,
+      )}`;
+      try {
+        const j = await getJson(url);
+        const usd = Number.parseFloat(j?.price);
+        if (Number.isFinite(usd) && usd > 0) {
+          out[symbol] = { usd, note: "USDT-quoted (not USD)" };
+        }
+      } catch {
+        /* symbol not listed on Binance; leave it for the next provider */
       }
     }
     if (Object.keys(out).length === 0) throw new ReferenceUnavailableError("binance returned no quotes");
@@ -238,14 +257,25 @@ export async function fetchReferences(
         const symbol = options.symbols[denom];
         const hit = partial[symbol];
         if (!hit) continue;
+        const retrievedAt = nowIso();
+        // Provenance note: when a provider does not report an upstream trade
+        // time, say so rather than presenting the retrieval time as one.
+        const note = [
+          hit.note,
+          hit.lastTradeIso
+            ? undefined
+            : `no upstream trade time from ${provider.name}; upstreamLastUpdate mirrors retrievedAt`,
+        ]
+          .filter(Boolean)
+          .join("; ");
         quotes[denom] = {
           denom,
           symbol,
           usd: hit.usd,
           source: provider.name,
-          retrievedAt: nowIso(),
-          upstreamLastUpdate: hit.lastTradeIso ?? nowIso(),
-          note: hit.note,
+          retrievedAt,
+          upstreamLastUpdate: hit.lastTradeIso ?? retrievedAt,
+          note: note.length > 0 ? note : undefined,
         };
         unresolved.delete(denom);
       }

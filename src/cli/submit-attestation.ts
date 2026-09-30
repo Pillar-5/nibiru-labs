@@ -15,26 +15,33 @@
  *  - MAX_ATTESTATIONS_PER_RUN caps how many reports one invocation submits.
  *  - The chain id returned by the node must match the configured chain id,
  *    so a misconfigured RPC cannot point signing at an unexpected network.
+ *  - The on-chain owner of the registry must equal the signing account, so a
+ *    key that cannot write does not pay gas to find out.
+ *  - ATTESTATION_REGISTRY must name the registry to write to.
  *  - Confirmation (ATTEST_AUTO_CONFIRM=1) is required for non-interactive use.
  *
- * Prefer a dedicated low-value testnet account for ATTESTER_ADDRESS.
+ * Use a dedicated low-value testnet account as the signing key.
  */
 import "dotenv/config";
 import { ethers } from "ethers";
 import { loadConfig } from "../config.ts";
 import { readSnapshots } from "../store.ts";
-import { encodeRecordCall, contentHash, toRecord } from "../attestation.ts";
+import { ATTESTATION_ABI, encodeRecordCall, contentHash, toRecord } from "../attestation.ts";
+import { resolveRegistryAddress } from "../registry.ts";
+import { redactSecrets } from "../safety.ts";
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const privateKey = process.env.NIBIRU_PRIVATE_KEY;
-  const registryAddress = process.env.ATTESTATION_REGISTRY;
   if (!privateKey) {
     console.error("NIBIRU_PRIVATE_KEY is not set; attestation requires a local signing key.");
     process.exit(1);
   }
-  if (!registryAddress) {
-    console.error("ATTESTATION_REGISTRY is not set; deploy the registry first (npm run contract:deploy).");
+  let registryAddress: string;
+  try {
+    registryAddress = resolveRegistryAddress(config);
+  } catch (e) {
+    console.error((e as Error).message);
     process.exit(1);
   }
 
@@ -66,11 +73,7 @@ async function main(): Promise<void> {
   const wallet = new ethers.Wallet(privateKey, provider);
   const balance = await provider.getBalance(await wallet.getAddress());
 
-  const registry = new ethers.Interface([
-    "function record(bytes32,string,uint64,uint64,int64,uint8,uint64,uint32,uint32)",
-    "function owner() view returns (address)",
-    "function isKnownContentHash(bytes32) view returns (bool)",
-  ]);
+  const registry = new ethers.Interface(ATTESTATION_ABI);
   const rawOwner = (await provider.call({ to: registryAddress, data: registry.getFunction("owner")!.selector })) as string;
   const onChainOwner = ethers.AbiCoder.defaultAbiCoder().decode(["address"], rawOwner)[0] as string;
   if (onChainOwner.toLowerCase() !== (await wallet.getAddress()).toLowerCase()) {
@@ -125,6 +128,26 @@ async function main(): Promise<void> {
     ]);
     return Math.max(latest, pending);
   };
+
+  /**
+   * Wait for a receipt by polling, tolerating the transient "tx not found"
+   * responses public RPC nodes return while a transaction is still propagating.
+   * `tx.wait()` aborts on the first such error, which would leave a batch
+   * half-submitted; polling lets the run finish.
+   */
+  const waitForReceipt = async (hash: string): Promise<ethers.TransactionReceipt> => {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      try {
+        const receipt = await provider.getTransactionReceipt(hash);
+        if (receipt) return receipt;
+      } catch {
+        /* transient node error; retry below */
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    throw new Error(`no receipt for ${hash} after ${20} polls`);
+  };
+
   let nonce = await nextNonce();
   for (const sample of selected) {
     const record = toRecord(snapshot, sample);
@@ -139,10 +162,10 @@ async function main(): Promise<void> {
       continue;
     }
     const tx = await registry.encodeFunctionData("record", encoded.args);
-    let receipt;
+    let sent: ethers.TransactionResponse;
     for (let attempt = 0; ; attempt++) {
       try {
-        receipt = await wallet.sendTransaction({ to: registryAddress, data: tx, nonce: nonce++ });
+        sent = await wallet.sendTransaction({ to: registryAddress, data: tx, nonce: nonce++ });
         break;
       } catch (e) {
         const m = /invalid nonce; got (\d+), expected (\d+) or higher/.exec(String(e));
@@ -154,22 +177,22 @@ async function main(): Promise<void> {
         throw e;
       }
     }
-    console.log(`submitted ${sample.pair} hash=${hash.slice(0, 10)}... tx=${receipt!.hash}`);
-    const done = await receipt!.wait();
-    if (done?.status !== 1) {
-      console.error(`reverted: ${sample.pair} tx ${receipt!.hash}`);
+    console.log(`submitted ${sample.pair} hash=${hash.slice(0, 10)}... tx=${sent.hash}`);
+    const done = await waitForReceipt(sent.hash);
+    if (done.status !== 1) {
+      console.error(`reverted: ${sample.pair} tx ${sent.hash}`);
       process.exit(1);
     }
     // resync after confirmation in case the account had queued transactions
     nonce = await nextNonce();
     console.log(`confirmed   ${sample.pair} block=${done.blockNumber} gas=${done.gasUsed}`);
-    console.log(`verify: ${config.network.explorerUrl}/tx/${receipt!.hash}`);
+    console.log(`verify: ${config.network.explorerUrl}/tx/${sent.hash}`);
   }
 }
 
 main().catch((e) => {
   const msg = e instanceof Error ? e.message : String(e);
-  // Defensive: drop any line that looks like a private key before printing.
-  console.error(msg.replace(/0x[0-9a-fA-F]{64}/g, "0x[redacted]"));
+  // Redact exact secret values only, so tx hashes stay readable in errors.
+  console.error(redactSecrets(msg));
   process.exit(1);
 });

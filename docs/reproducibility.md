@@ -39,8 +39,8 @@ reference providers — enough to run everything read-only. See
 To write attestations you additionally set, in your local `.env`:
 
 ```bash
-WALLET_PRIVATE_KEY=<your own testnet private key>
-REGISTRY_ADDRESS_6911=<registry address you deployed, or the published one>
+NIBIRU_PRIVATE_KEY=<your own testnet private key>
+ATTESTATION_REGISTRY=<registry address you deployed, or the published one>
 ```
 
 `.env` is gitignored; the key never needs to leave your machine. Anyone can
@@ -85,7 +85,7 @@ breaches and zero stale samples.
 ## 5. Tests
 
 ```bash
-npm test          # 30 deterministic tests; no network access required
+npm test          # 46 deterministic tests; no network access required
 LIVE_TESTS=1 npm test   # additionally hits the live precompile on both networks
 ```
 
@@ -117,7 +117,7 @@ npm run contract:deploy    # deploys from the address derived from your key
 
 Record the printed address and tx hash; the deploy step writes
 `data/deployment.json`. Then point `.env` at your deployment
-(`REGISTRY_ADDRESS_<chainId>=...`) and verify the write path:
+(`ATTESTATION_REGISTRY=...`) and verify the write path:
 
 ```bash
 npm run monitor:once

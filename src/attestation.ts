@@ -40,10 +40,23 @@ function signedBps(value: number | null): bigint {
   return BigInt(Math.round(value));
 }
 
+const ATTESTATION_TUPLE =
+  "tuple(string pair,uint64 oracleRateFixed8,uint64 referenceFixed8,int64 deviationBps,uint8 status,uint64 oracleUpdateBlock,uint32 collectedAtUnix,uint32 oracleBlock,bytes32 contentHash)";
+
+/**
+ * ABI of the deployed registry. This is the single source of truth used by the
+ * signing CLI and the read-back verification script; tests/contract.test.ts
+ * asserts every entry still matches the solc-compiled contract.
+ */
 export const ATTESTATION_ABI = [
   "function record(bytes32 pairId,string pair,uint64 oracleRateFixed8,uint64 referenceFixed8,int64 deviationBps,uint8 status,uint64 oracleUpdateBlock,uint32 collectedAtUnix,uint32 oracleBlock) external",
   "event AttestationRecorded(bytes32 indexed pairId,string pair,uint64 oracleRateFixed8,uint64 referenceFixed8,int64 deviationBps,uint8 status,uint64 oracleUpdateBlock,uint32 collectedAtUnix,uint32 oracleBlock,bytes32 contentHash)",
-  "function getAttestation(bytes32 pairId) view returns (tuple(string pair,uint64 oracleRateFixed8,uint64 referenceFixed8,int64 deviationBps,uint8 status,uint64 oracleUpdateBlock,uint32 collectedAtUnix,uint32 oracleBlock,bytes32 contentHash))",
+  `function getAttestation(bytes32 pairId) view returns (${ATTESTATION_TUPLE})`,
+  `function lookup(string pair) view returns (bool found, ${ATTESTATION_TUPLE} attestation)`,
+  "function owner() view returns (address)",
+  "function reportCount(bytes32 pairId) view returns (uint64)",
+  "function isKnownContentHash(bytes32 contentHash) view returns (bool)",
+  "function transferOwnership(address newOwner) external",
 ];
 
 export interface AttestationRecord {

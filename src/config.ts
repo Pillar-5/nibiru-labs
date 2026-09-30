@@ -55,7 +55,10 @@ export interface AppConfig {
   reference: ReferenceConfig;
   thresholds: Thresholds;
   stateFile: string;
+  apiHost: string;
   apiPort: number;
+  /** cadence for `npm run monitor:loop`, in milliseconds */
+  monitorIntervalMs: number;
 }
 
 function env(name: string, fallback?: string): string {
@@ -77,10 +80,17 @@ function envInt(name: string, fallback: number): number {
 
 /** Parse "unibi:uusd,ueth:uusd" into an array of pairs. */
 export function parsePairs(raw: string): string[] {
-  return raw
+  const pairs = raw
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+  for (const pair of pairs) {
+    const [base, quote] = pair.split(":");
+    if (!base || !quote) {
+      throw new Error(`Invalid oracle pair "${pair}" (expected base:quote, e.g. ueth:uusd)`);
+    }
+  }
+  return pairs;
 }
 
 /** Parse "ueth=ethereum,ubtc=bitcoin" into a denom -> id map. */
@@ -142,6 +152,8 @@ export function loadConfig(): AppConfig {
       deviationCriticalBps: envInt("DEVIATION_CRITICAL_BPS", 200),
     },
     stateFile: env("STATE_FILE", "data/state.jsonl"),
+    apiHost: env("API_HOST", "127.0.0.1"),
     apiPort: envInt("API_PORT", 8787),
+    monitorIntervalMs: envInt("MONITOR_INTERVAL_MS", 300_000),
   };
 }

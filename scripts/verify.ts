@@ -3,48 +3,24 @@
  *
  * Reads the deployed OracleAttestationRegistry through the configured network
  * and prints the latest anchored integrity report for each monitored pair.
- * Requires no wallet and no secrets: it only needs NIBIRU_NETWORK (or RPC
- * overrides) and ATTESTATION_REGISTRY (or data/deployment.json from a local
- * deploy). Use it to confirm what the chain records independently of this
- * repository's local store.
+ * Requires no wallet, no secrets and no compiled artifact: it only needs
+ * NIBIRU_NETWORK (or RPC overrides) and ATTESTATION_REGISTRY (or the record
+ * written by a local deploy in data/deployment.json). Use it to confirm what
+ * the chain records independently of this repository's local store.
  *
  *   npm run contract:verify
  */
 import "dotenv/config";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { ethers } from "ethers";
 import { loadConfig } from "../src/config.ts";
-import { STATUS_NAME } from "../src/attestation.ts";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const root = resolve(here, "..");
-
-function registryAddress(): string {
-  const fromEnv = process.env.ATTESTATION_REGISTRY?.trim();
-  if (fromEnv) return fromEnv;
-  const path = join(root, "data/deployment.json");
-  if (existsSync(path)) {
-    const deployments = JSON.parse(readFileSync(path, "utf8"));
-    const config = loadConfig();
-    const record = deployments[String(config.network.chainId)];
-    if (record?.address) return record.address;
-  }
-  console.error(
-    "No registry address. Set ATTESTATION_REGISTRY in .env or deploy the registry (npm run contract:deploy).",
-  );
-  process.exit(1);
-}
+import { ATTESTATION_ABI, STATUS_NAME } from "../src/attestation.ts";
+import { resolveRegistryAddress } from "../src/registry.ts";
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const address = registryAddress();
-  const artifact = JSON.parse(
-    readFileSync(join(root, "artifacts/OracleAttestationRegistry.json"), "utf8"),
-  );
+  const address = resolveRegistryAddress(config);
   const provider = new ethers.JsonRpcProvider(config.network.rpcUrl, config.network.chainId);
-  const registry = new ethers.Contract(address, artifact.abi, provider);
+  const registry = new ethers.Contract(address, ATTESTATION_ABI, provider);
 
   console.log(`network:  ${config.network.name} (chainId ${config.network.chainId})`);
   console.log(`rpc:      ${config.network.rpcUrl}`);
